@@ -1,0 +1,33 @@
+// Load Jharkhand boundary from GAUL dataset
+var jharkhand = ee.FeatureCollection("FAO/GAUL/2015/level1")
+  .filter(ee.Filter.eq('ADM1_NAME', 'Jharkhand'));
+
+Map.centerObject(jharkhand, 7);
+
+// Function to get NDVI image for a given year and season
+function getNDVI(year, start, end) {
+  var image = ee.ImageCollection('COPERNICUS/S2')
+    .filterDate(year + '-' + start, year + '-' + end)
+    .filterBounds(jharkhand)
+    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))
+    .median()
+    .clip(jharkhand);
+
+  return image.normalizedDifference(['B8', 'B4']).rename('NDVI');
+}
+
+// Get NDVI for monsoon season in two years
+var ndvi2019 = getNDVI('2019', '06-01', '08-30');
+var ndvi2023 = getNDVI('2023', '06-01', '08-30');
+//https://code.earthengine.google.com/b8b5e3039694a2bfe6aa7a15ecb61e3b
+// Calculate NDVI difference
+var change = ndvi2023.subtract(ndvi2019).rename('NDVI Change');
+
+// Visualization parameters
+var ndviParams = {min: 0, max: 1, palette: ['white', 'green']};
+var changeParams = {min: -0.4, max: 0.4, palette: ['red', 'white', 'green']};
+
+// Add layers to the map
+Map.addLayer(ndvi2019, ndviParams, 'NDVI 2019');
+Map.addLayer(ndvi2023, ndviParams, 'NDVI 2023');
+Map.addLayer(change, changeParams, 'NDVI Change (2023 - 2019)');

@@ -1,0 +1,30 @@
+// Center the map on Ranchi
+var ranchi = ee.Geometry.Point([85.33, 23.34]);
+Map.centerObject(ranchi, 10);
+//https://code.earthengine.google.com/589d18840b296341b572dbdc99b30c70
+// Sentinel-2 loader for two years
+function getImage(year) {
+  return ee.ImageCollection('COPERNICUS/S2')
+    .filterDate(year + '-01-01', year + '-12-31')
+    .filterBounds(ranchi)
+    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))
+    .median()
+    .clip(ranchi);
+}
+
+var image2016 = getImage(2016);
+var image2023 = getImage(2023);
+
+// NDVI-based urban masking
+function maskUrban(image) {
+  var ndvi = image.normalizedDifference(['B8', 'B4']).rename('NDVI');
+  var urban = ndvi.lt(0.3);
+  return image.updateMask(urban);
+}
+
+// Visualization
+Map.addLayer(urban2016, {bands: ['B4', 'B3', 'B2'], max: 3000}, 'Urban 2016');
+Map.addLayer(urban2023, {bands: ['B4', 'B3', 'B2'], max: 3000}, 'Urban 2023');
+
+var urban2016 = maskUrban(image2016);
+var urban2023 = maskUrban(image2023);
